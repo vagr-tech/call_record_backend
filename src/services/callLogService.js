@@ -42,6 +42,14 @@ function formatDateTime(date) {
 /**
  * Appends one row to Google Sheets for a completed call.
  * Sheet column order: Date | Time | Shop Name | Address | From Number | To Number | Duration | Shop ID | Notes | Reminder
+ *
+ * Duration is sent as a real number (fraction of a day, e.g. 47 seconds ->
+ * 47/86400) instead of a "00:47" string, so pivot tables can SUM it
+ * correctly. Format the Duration column with a custom number format of
+ * "[h]:mm:ss" (or "[m]:ss" for minutes:seconds only) in Google Sheets so it
+ * still *displays* as a duration — the square brackets let totals exceed
+ * 24 hours / 60 minutes without wrapping around, which is what you want
+ * for a summed column.
  */
 async function appendCallLog({
   shopId,
@@ -58,7 +66,8 @@ async function appendCallLog({
 
   const when = callTimestamp ? new Date(callTimestamp) : new Date();
   const { date, time } = formatDateTime(when);
-  const duration = formatDuration(durationSeconds);
+  const safeDurationSeconds = Math.max(0, Math.floor(durationSeconds || 0));
+  const durationDayFraction = safeDurationSeconds / 86400; // Sheets duration/time serial unit
 
   const row = [
     date,
@@ -67,7 +76,7 @@ async function appendCallLog({
     address,
     fromNumber,
     toNumber,
-    duration,
+    durationDayFraction,
     shopId,
     notes || "",
     reminderDate || "",
@@ -76,9 +85,10 @@ async function appendCallLog({
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: RANGE,
-    // RAW (not USER_ENTERED) so Sheets stores our formatted strings exactly
-    // as sent — e.g. "02:56 PM" — instead of re-parsing them as a time
-    // value and redisplaying with the column's own (24-hour) number format.
+    // RAW: our formatted strings (date/time) go in exactly as sent — no
+    // re-parsing surprises. The Duration value above is a genuine JS
+    // number, so it still lands in the sheet as a real, summable number
+    // even under RAW (RAW only affects how *strings* are interpreted).
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
@@ -87,7 +97,7 @@ async function appendCallLog({
   return {
     date,
     time,
-    duration,
+    duration: formatDuration(safeDurationSeconds),
     notes: notes || "",
     reminderDate: reminderDate || "",
   };

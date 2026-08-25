@@ -76,7 +76,10 @@ async function appendCallLog({
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: RANGE,
-    valueInputOption: "USER_ENTERED",
+    // RAW (not USER_ENTERED) so Sheets stores our formatted strings exactly
+    // as sent — e.g. "02:56 PM" — instead of re-parsing them as a time
+    // value and redisplaying with the column's own (24-hour) number format.
+    valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
   });

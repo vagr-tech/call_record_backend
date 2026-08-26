@@ -26,9 +26,9 @@ async function getShop(req, res, next) {
 
 async function addShop(req, res, next) {
   try {
-    const { name, address, phoneNumber } = req.body;
+    const { name, address, phoneNumber, salesmanName } = req.body;
 
-    const required = { name, address, phoneNumber };
+    const required = { name, address, phoneNumber, salesmanName };
     const missing = Object.entries(required)
       .filter(
         ([, v]) => v === undefined || v === null || String(v).trim() === "",
@@ -42,7 +42,12 @@ async function addShop(req, res, next) {
       });
     }
 
-    const shop = await shopService.createShop({ name, address, phoneNumber });
+    const shop = await shopService.createShop({
+      name,
+      address,
+      phoneNumber,
+      salesmanName,
+    });
     res
       .status(201)
       .json({ success: true, message: "Shop created", data: shop });

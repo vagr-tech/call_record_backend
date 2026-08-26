@@ -42,13 +42,14 @@ function generateShopId() {
   return `SHOP-${uuidv4().split("-")[0]}`;
 }
 
-async function createShop({ name, address, phoneNumber }) {
+async function createShop({ name, address, phoneNumber, salesmanName }) {
   const shopId = generateShopId();
   const item = {
     shopId,
     name,
     address,
     phoneNumber,
+    salesmanName,
     createdAt: new Date().toISOString(),
   };
 

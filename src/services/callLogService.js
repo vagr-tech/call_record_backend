@@ -41,7 +41,7 @@ function formatDateTime(date) {
 
 /**
  * Appends one row to Google Sheets for a completed call.
- * Sheet column order: Date | Time | Shop Name | Address | From Number | To Number | Duration | Shop ID | Notes | Reminder
+ * Sheet column order: Date | Time | Shop Name | Address | From Number | To Number | Duration | Shop ID | Notes | Reminder | Salesman Name
  *
  * Duration is sent as a real number (fraction of a day, e.g. 47 seconds ->
  * 47/86400) instead of a "00:47" string, so pivot tables can SUM it
@@ -61,6 +61,7 @@ async function appendCallLog({
   callTimestamp,
   notes,
   reminderDate,
+  salesmanName,
 }) {
   const sheets = await getSheetsClient();
 
@@ -80,6 +81,7 @@ async function appendCallLog({
     shopId,
     notes || "",
     reminderDate || "",
+    salesmanName || "",
   ];
 
   await sheets.spreadsheets.values.append({
@@ -100,6 +102,7 @@ async function appendCallLog({
     duration: formatDuration(safeDurationSeconds),
     notes: notes || "",
     reminderDate: reminderDate || "",
+    salesmanName: salesmanName || "",
   };
 }
 

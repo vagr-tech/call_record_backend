@@ -13,6 +13,7 @@ async function createCallLog(req, res, next) {
       notes,
       reminderDate,
       salesmanName,
+      callStatus,
     } = req.body;
 
     // Basic validation
@@ -47,6 +48,7 @@ async function createCallLog(req, res, next) {
       notes,
       reminderDate,
       salesmanName,
+      callStatus,
     });
 
     res

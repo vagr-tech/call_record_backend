@@ -1,4 +1,6 @@
 const callLogService = require("../services/callLogService");
+const callLogDynamoService = require("../services/callLogDynamoService");
+const logger = require("../utils/logger");
 
 async function createCallLog(req, res, next) {
   try {
@@ -37,7 +39,7 @@ async function createCallLog(req, res, next) {
       });
     }
 
-    const result = await callLogService.appendCallLog({
+    const payload = {
       shopId,
       shopName,
       address,
@@ -49,11 +51,53 @@ async function createCallLog(req, res, next) {
       reminderDate,
       salesmanName,
       callStatus,
-    });
+    };
 
-    res
-      .status(201)
-      .json({ success: true, message: "Call log recorded", data: result });
+    // Write to Google Sheets and DynamoDB independently — one failing
+    // shouldn't block the other, since they're separate destinations for
+    // the same record.
+    const [sheetsResult, dynamoResult] = await Promise.allSettled([
+      callLogService.appendCallLog(payload),
+      callLogDynamoService.saveCallLog(payload),
+    ]);
+
+    if (sheetsResult.status === "rejected") {
+      logger.error("Failed to write call log to Google Sheets", {
+        error: sheetsResult.reason?.message,
+      });
+    }
+    if (dynamoResult.status === "rejected") {
+      logger.error("Failed to write call log to DynamoDB", {
+        error: dynamoResult.reason?.message,
+      });
+    }
+
+    // Only a total failure (neither destination succeeded) is an error
+    // response — a partial failure still returns success with a note, so
+    // the client doesn't retry and create a duplicate in whichever
+    // destination *did* succeed.
+    if (
+      sheetsResult.status === "rejected" &&
+      dynamoResult.status === "rejected"
+    ) {
+      return res.status(502).json({
+        success: false,
+        message: "Failed to save call log to Google Sheets or DynamoDB",
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Call log recorded",
+      data:
+        sheetsResult.status === "fulfilled"
+          ? sheetsResult.value
+          : dynamoResult.value,
+      savedTo: {
+        googleSheets: sheetsResult.status === "fulfilled",
+        dynamoDB: dynamoResult.status === "fulfilled",
+      },
+    });
   } catch (err) {
     next(err);
   }

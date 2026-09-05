@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const shopRoutes = require("./routes/shopRoutes");
 const callLogRoutes = require("./routes/callLogRoutes");
+const followupRoutes = require("./routes/followupRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -31,6 +32,7 @@ app.get("/health", (req, res) => res.status(200).json({ status: "healthy" }));
 // ---- Routes ----
 app.use("/api/shops", shopRoutes);
 app.use("/api/call-logs", callLogRoutes);
+app.use("/api/followups", followupRoutes);
 
 // ---- 404 ----
 app.use((req, res) => {

@@ -292,6 +292,18 @@
         font-size: 13.5px;
       }
 
+      .dismissed-note {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 8px;
+        padding: 0 4px;
+      }
+      .dismissed-note a {
+        color: var(--navy);
+        cursor: pointer;
+        text-decoration: underline;
+      }
+
       .date-group {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -646,7 +658,10 @@
         refreshBtn.disabled = true;
         refreshBtn.textContent = "Refreshing…";
         try {
-          const logsRes = await fetch(API_URL);
+          const [logsRes] = await Promise.all([
+            fetch(API_URL),
+            fetchDismissed(),
+          ]);
           const body = await logsRes.json();
           allLogs = Array.isArray(body.data) ? body.data : [];
           populateSalesmanFilter();
@@ -729,6 +744,20 @@
         return notes === "call not answered";
       }
 
+      let dismissedShopKeys = new Set();
+
+      async function fetchDismissed() {
+        try {
+          const res = await fetch("/api/followups/dismissed");
+          const body = await res.json();
+          dismissedShopKeys = new Set(
+            Array.isArray(body.data) ? body.data : [],
+          );
+        } catch (e) {
+          dismissedShopKeys = new Set();
+        }
+      }
+
       function getTodaysFollowups() {
         const latestByShop = new Map();
         allLogs.forEach((l) => {
@@ -744,65 +773,43 @@
         });
 
         return [...latestByShop.values()].filter(
-          (l) => isReminderDueOrOverdue(l.reminderDate) || isUnresolvedCall(l),
+          (l) =>
+            !dismissedShopKeys.has(l.shopId || l.shopName) &&
+            (isReminderDueOrOverdue(l.reminderDate) || isUnresolvedCall(l)),
         );
       }
 
       async function dismissFollowup(shopKey) {
-        const source = allLogs.find(
-          (l) => (l.shopId || l.shopName) === shopKey,
-        );
-        if (!source) return;
-
-        // Creates a normal call-log entry marking this follow-up handled — no
-        // separate "dismissal" system needed. Since it becomes this shop's
-        // newest entry, the existing "look at each shop's latest entry" logic
-        // in getTodaysFollowups() automatically drops it off the list for
-        // EVERYONE viewing the dashboard (it's a real row in the same shared
-        // data everyone already reads), not just this browser.
-        //
-        // callStatus is intentionally left untouched here — that field already
-        // has its own meaning (Incoming/Outgoing/Answered/Missed etc, set by
-        // the app/native call monitor) and isn't needed to resolve a
-        // follow-up: only `notes` (not left as the literal "Call not
-        // answered") and `reminderDate` (left empty) matter to
-        // getTodaysFollowups()'s exclusion rules.
-        const nowIso = new Date().toISOString();
-        const handledEntry = {
-          ...source,
-          notes: "Follow-up handled (marked done via dashboard)",
-          reminderDate: "",
-          callTimestamp: nowIso,
-        };
-
-        // Optimistic UI: reflect it immediately without waiting on the network.
-        allLogs.push(handledEntry);
+        // Purely a "hide this from today's follow-up list" flag — completely
+        // separate from CallLogs/the Google Sheet. This never creates, edits,
+        // or touches any call-log entry; it only affects what shows up here,
+        // for every dashboard viewer (shared via the backend, not per-browser).
+        dismissedShopKeys.add(shopKey); // optimistic UI
         renderFollowups();
         renderOverview();
 
         try {
-          await fetch("/api/call-logs", {
+          await fetch("/api/followups/dismiss", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              shopId: source.shopId,
-              shopName: source.shopName,
-              address: source.address,
-              fromNumber: "Unknown",
-              toNumber: source.toNumber,
-              durationSeconds: 0,
-              callTimestamp: nowIso,
-              notes: handledEntry.notes,
-              salesmanName: source.salesmanName,
-            }),
+            body: JSON.stringify({ shopKey }),
           });
         } catch (e) {
-          // The optimistic entry stays in this session either way; the next
-          // refresh reconciles with whatever the server actually has.
+          // Stays optimistically dismissed in this session; next refresh
+          // reconciles with the server's actual state.
         }
       }
 
       window.dismissFollowup = dismissFollowup;
+
+      window.undismissAllToday = async function () {
+        dismissedShopKeys = new Set();
+        renderFollowups();
+        renderOverview();
+        try {
+          await fetch("/api/followups/undismiss-all", { method: "POST" });
+        } catch (e) {}
+      };
 
       function followupRowHtml(l, isReminder) {
         const shopKey = l.shopId || l.shopName;
@@ -849,9 +856,15 @@
           : "";
 
         const list = document.getElementById("followupList");
+        const dismissedCount = dismissedShopKeys.size;
+        const undoLink = dismissedCount
+          ? `<div class="dismissed-note">${dismissedCount} marked done today · <a onclick="undismissAllToday()">undo all</a></div>`
+          : "";
 
         if (visible.length === 0) {
-          list.innerHTML = `<div class="empty-note">All caught up — no follow-ups due today.</div>`;
+          list.innerHTML =
+            `<div class="empty-note">All caught up — no follow-ups due today.</div>` +
+            undoLink;
           return;
         }
 
@@ -860,6 +873,7 @@
           html += followupGroupHtml("Reminders due", reminders, true);
         if (notAnswered.length)
           html += followupGroupHtml("Not answered", notAnswered, false);
+        html += undoLink;
 
         list.innerHTML = html;
       }

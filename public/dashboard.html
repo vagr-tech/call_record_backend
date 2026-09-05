@@ -687,8 +687,22 @@
        * nagging forever once you've called back since.
        *
        *  1. That latest call has a reminder due today or overdue.
-       *  2. OR that latest call was never answered.
+       *  2. OR that latest call is unresolved (see isUnresolvedCall below).
        */
+
+      /**
+       * A call counts as "unresolved" (still needs a follow-up call) only
+       * when its notes literally say "Call not answered" — the exact text
+       * the app auto-fills for a missed/rejected/no-answer call. Blank notes
+       * are NOT treated as unresolved (older rows before notes were required,
+       * or entries someone left empty on purpose) — only an explicit
+       * "Call not answered" tag puts a shop on this list via this rule.
+       */
+      function isUnresolvedCall(l) {
+        const notes = (l.notes || "").trim().toLowerCase();
+        return notes === "call not answered";
+      }
+
       function getTodaysFollowups() {
         const latestByShop = new Map();
         allLogs.forEach((l) => {
@@ -704,9 +718,7 @@
         });
 
         return [...latestByShop.values()].filter(
-          (l) =>
-            isReminderDueOrOverdue(l.reminderDate) ||
-            !isAnsweredStatus(l.callStatus),
+          (l) => isReminderDueOrOverdue(l.reminderDate) || isUnresolvedCall(l),
         );
       }
 

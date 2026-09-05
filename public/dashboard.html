@@ -577,6 +577,25 @@
         return `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
       }
 
+      /** Parses a "dd/mm/yyyy" reminder string into a Date at midnight, or null. */
+      function parseDdMmYyyy(str) {
+        if (!str) return null;
+        const parts = str.trim().split("/");
+        if (parts.length !== 3) return null;
+        const [day, month, year] = parts.map(Number);
+        if (!day || !month || !year) return null;
+        return new Date(year, month - 1, day);
+      }
+
+      /** True if a "dd/mm/yyyy" reminder date is today or earlier (overdue). */
+      function isReminderDueOrOverdue(reminderStr) {
+        const reminderDate = parseDdMmYyyy(reminderStr);
+        if (!reminderDate) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return reminderDate.getTime() <= today.getTime();
+      }
+
       function dateKey(isoString) {
         const d = isoString ? new Date(isoString) : new Date(0);
         return d.toISOString().slice(0, 10);
@@ -651,37 +670,57 @@
           (l) => l.callTimestamp && new Date(l.callTimestamp) >= weekAgo,
         );
 
-        const todayStr = todayDdMmYyyy();
-        const followupsToday = allLogs.filter(
-          (l) =>
-            (l.reminderDate && l.reminderDate.trim() === todayStr) ||
-            (sameCalendarDay(l.callTimestamp, now) &&
-              !isAnsweredStatus(l.callStatus)),
-        );
-
         document.getElementById("statTotalCalls").textContent =
           todayLogs.length;
         document.getElementById("statTotalTalkTime").textContent =
           formatDuration(totalSeconds);
         document.getElementById("statFollowups").textContent =
-          followupsToday.length;
+          getTodaysFollowups().length;
         document.getElementById("statWeekCalls").textContent = weekLogs.length;
       }
 
-      function renderFollowups() {
-        const now = new Date();
-        const todayStr = todayDdMmYyyy();
+      /**
+       * Today's follow-up worklist:
+       *  1. Reminders that are due today OR overdue (e.g. set for Saturday,
+       *     never actioned because Sunday's a holiday — it still shows up
+       *     Monday instead of silently disappearing once the date passes).
+       *  2. Any shop whose MOST RECENT call was never answered — this stays
+       *     on the list regardless of which day that call happened on
+       *     (yesterday, the day before, etc.), since it's still unresolved.
+       *     It naturally drops off once a later call to that shop connects.
+       */
+      function getTodaysFollowups() {
+        const reminders = allLogs.filter((l) =>
+          isReminderDueOrOverdue(l.reminderDate),
+        );
+        const reminderShopKeys = new Set(
+          reminders.map((l) => l.shopId || l.shopName),
+        );
 
-        const reminders = allLogs.filter(
-          (l) => l.reminderDate && l.reminderDate.trim() === todayStr,
-        );
-        const notAnsweredToday = allLogs.filter(
+        const latestByShop = new Map();
+        allLogs.forEach((l) => {
+          const key = l.shopId || l.shopName;
+          const existing = latestByShop.get(key);
+          if (
+            !existing ||
+            new Date(l.callTimestamp || 0) >
+              new Date(existing.callTimestamp || 0)
+          ) {
+            latestByShop.set(key, l);
+          }
+        });
+
+        const outstandingNotAnswered = [...latestByShop.values()].filter(
           (l) =>
-            sameCalendarDay(l.callTimestamp, now) &&
             !isAnsweredStatus(l.callStatus) &&
-            !(l.reminderDate && l.reminderDate.trim() === todayStr),
+            !reminderShopKeys.has(l.shopId || l.shopName),
         );
-        const combined = [...reminders, ...notAnsweredToday];
+
+        return [...reminders, ...outstandingNotAnswered];
+      }
+
+      function renderFollowups() {
+        const combined = getTodaysFollowups();
 
         document.getElementById("followupCount").textContent = combined.length
           ? `${combined.length} to follow up`
@@ -695,8 +734,7 @@
 
         list.innerHTML = combined
           .map((l) => {
-            const isReminder =
-              l.reminderDate && l.reminderDate.trim() === todayStr;
+            const isReminder = isReminderDueOrOverdue(l.reminderDate);
             const reasonLabel = isReminder
               ? `Reminder · ${escapeHtml(l.reminderDate)}`
               : "Not answered — follow up";

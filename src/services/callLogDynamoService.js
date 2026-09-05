@@ -1,4 +1,4 @@
-const { PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/dynamoClient");
 
@@ -63,4 +63,63 @@ async function saveCallLog({
   return item;
 }
 
-module.exports = { saveCallLog };
+/**
+ * Fetches every item from the CallLogs table, transparently handling
+ * DynamoDB's own internal pagination (a single Scan only returns up to
+ * ~1MB of data, so a large table needs multiple requests via
+ * ExclusiveStartKey/LastEvaluatedKey to retrieve everything).
+ */
+async function scanAllItems() {
+  let items = [];
+  let lastEvaluatedKey;
+
+  do {
+    const command = new ScanCommand({
+      TableName: TABLE_NAME,
+      ExclusiveStartKey: lastEvaluatedKey,
+    });
+    const result = await docClient.send(command);
+    items = items.concat(result.Items || []);
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  return items;
+}
+
+/**
+ * Returns call logs, newest first.
+ *
+ * Pass no arguments (or omit `limit`) to get every call log — this keeps
+ * existing callers (like the dashboard, which does its own client-side
+ * date-grouping over the full set) working unchanged.
+ *
+ * Pass `{ limit, offset }` to get one page instead — e.g. `{ limit: 50 }`
+ * for the first 50 newest calls, `{ limit: 50, offset: 50 }` for the next
+ * 50, and so on. Sorting happens in memory across the *entire* table
+ * before paging, so page order is always correct — DynamoDB Scan's own
+ * pagination only walks the table in storage order, not by callTimestamp,
+ * so paginating with the raw Scan directly would produce out-of-order
+ * pages here.
+ */
+async function getAllCallLogs({ limit, offset } = {}) {
+  const items = await scanAllItems();
+  items.sort((a, b) => new Date(b.callTimestamp) - new Date(a.callTimestamp));
+
+  if (limit === undefined || limit === null) {
+    return { items, total: items.length };
+  }
+
+  const safeLimit = Math.min(Math.max(1, Number(limit) || 50), 500);
+  const safeOffset = Math.max(0, Number(offset) || 0);
+  const page = items.slice(safeOffset, safeOffset + safeLimit);
+
+  return {
+    items: page,
+    total: items.length,
+    limit: safeLimit,
+    offset: safeOffset,
+    hasMore: safeOffset + safeLimit < items.length,
+  };
+}
+
+module.exports = { saveCallLog, getAllCallLogs };

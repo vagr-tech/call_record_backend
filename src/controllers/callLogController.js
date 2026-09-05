@@ -103,4 +103,27 @@ async function createCallLog(req, res, next) {
   }
 }
 
-module.exports = { createCallLog };
+async function listCallLogs(req, res, next) {
+  try {
+    const { limit, offset } = req.query;
+    const result = await callLogDynamoService.getAllCallLogs({ limit, offset });
+
+    // `data` always holds the array (matches the previous shape when no
+    // pagination params are given). Pagination metadata is only included
+    // when `limit` was actually requested, so existing callers (like the
+    // dashboard) see no change in response shape.
+    const response = { success: true, data: result.items };
+    if (limit !== undefined) {
+      response.total = result.total;
+      response.limit = result.limit;
+      response.offset = result.offset;
+      response.hasMore = result.hasMore;
+    }
+
+    res.status(200).json(response);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { createCallLog, listCallLogs };

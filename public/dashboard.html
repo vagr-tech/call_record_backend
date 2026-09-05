@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shop Caller — CRM Dashboard</title>
+    <style>
+      :root {
+        --navy: #132743;
+        --navy-light: #1d3a5f;
+        --accent-green: #1d9a5c;
+        --accent-amber: #c2410c;
+        --background: #f4f6fa;
+        --surface: #ffffff;
+        --border: #e5e8ef;
+        --text-primary: #17202e;
+        --text-secondary: #6b7280;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        background: var(--background);
+        color: var(--text-primary);
+        display: flex;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        width: 220px;
+        background: var(--navy);
+        color: #e8edf5;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 24px 16px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 8px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 20px;
+      }
+      .brand-icon {
+        width: 34px;
+        height: 34px;
+        background: var(--accent-green);
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 15px;
+        color: white;
+      }
+      .brand-name {
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: -0.2px;
+      }
+      .brand-sub {
+        font-size: 11px;
+        color: rgba(232, 237, 245, 0.55);
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 9px;
+        color: rgba(232, 237, 245, 0.75);
+        text-decoration: none;
+        font-size: 13.5px;
+        font-weight: 500;
+        margin-bottom: 2px;
+        cursor: pointer;
+      }
+      .nav-link:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+      }
+      .nav-link.active {
+        background: rgba(29, 154, 92, 0.18);
+        color: #fff;
+      }
+      .nav-link .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.6;
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        font-size: 11px;
+        color: rgba(232, 237, 245, 0.4);
+        padding: 0 8px;
+      }
+
+      .main {
+        flex: 1;
+        min-width: 0;
+        padding: 28px 32px 60px;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-bottom: 22px;
+      }
+      .page-header h1 {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.4px;
+        margin: 0;
+      }
+      .page-header .subtitle {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 3px;
+      }
+
+      .refresh-btn {
+        background: var(--navy);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .refresh-btn:hover {
+        background: var(--navy-light);
+      }
+      .refresh-btn:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 32px;
+      }
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 20px;
+      }
+      .stat-card .value {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      .stat-card .label {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        margin-top: 3px;
+      }
+      .stat-card.accent .value {
+        color: var(--accent-amber);
+      }
+
+      .section {
+        margin-bottom: 34px;
+      }
+      .section-title {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .section-title h2 {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -0.2px;
+      }
+      .section-title .count {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+      }
+
+      .followup-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .followup-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent-amber);
+        border-radius: 12px;
+        padding: 13px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: rgba(19, 39, 67, 0.08);
+        color: var(--navy);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+      .followup-main {
+        flex: 1;
+        min-width: 0;
+      }
+      .followup-shop {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .followup-notes {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        margin-top: 1px;
+      }
+      .followup-reason {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--accent-amber);
+        background: rgba(194, 65, 12, 0.08);
+        padding: 4px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .followup-reason.reminder {
+        color: var(--navy);
+        background: rgba(19, 39, 67, 0.08);
+      }
+
+      .empty-note {
+        background: var(--surface);
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 13.5px;
+      }
+
+      .date-group {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      .date-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 18px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .date-header:hover {
+        background: #fafbfd;
+      }
+      .date-header .date-label {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .date-header .date-meta {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .chevron {
+        transition: transform 0.15s ease;
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
+      .date-group.collapsed .chevron {
+        transform: rotate(-90deg);
+      }
+      .date-group.collapsed .call-list {
+        display: none;
+      }
+
+      .call-list {
+        border-top: 1px solid var(--border);
+      }
+      .call-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 11px 18px;
+        border-bottom: 1px solid var(--border);
+      }
+      .call-row:last-child {
+        border-bottom: none;
+      }
+      .call-time {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        width: 66px;
+        flex-shrink: 0;
+      }
+      .call-shop {
+        flex: 1.4;
+        min-width: 0;
+      }
+      .call-shop .name {
+        font-weight: 600;
+        font-size: 13.5px;
+      }
+      .call-shop .addr {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .call-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .call-badge.answered {
+        background: rgba(29, 154, 92, 0.12);
+        color: var(--accent-green);
+      }
+      .call-badge.not-answered {
+        background: rgba(107, 114, 128, 0.12);
+        color: var(--text-secondary);
+      }
+      .call-badge.missed {
+        background: rgba(194, 65, 12, 0.1);
+        color: var(--accent-amber);
+      }
+      .call-duration {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        width: 52px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .call-salesman {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        width: 90px;
+        flex-shrink: 0;
+      }
+      .call-notes {
+        flex: 1.6;
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .toolbar input,
+      .toolbar select {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: var(--text-primary);
+        outline: none;
+      }
+      .toolbar input:focus,
+      .toolbar select:focus {
+        border-color: var(--navy);
+      }
+      .toolbar input[type="text"] {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .loading-state {
+        padding: 40px;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 13.5px;
+      }
+
+      @media (max-width: 900px) {
+        .sidebar {
+          display: none;
+        }
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .main {
+          padding: 20px 16px 50px;
+        }
+        .call-salesman,
+        .call-notes {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">S</div>
+        <div>
+          <div class="brand-name">Shop Caller</div>
+          <div class="brand-sub">CRM Dashboard</div>
+        </div>
+      </div>
+      <a class="nav-link active" data-target="overview"
+        ><span class="dot"></span> Overview</a
+      >
+      <a class="nav-link" data-target="followups"
+        ><span class="dot"></span> Today's Follow-ups</a
+      >
+      <a class="nav-link" data-target="history"
+        ><span class="dot"></span> Call History</a
+      >
+      <div class="sidebar-footer">Shop Caller · Internal tool</div>
+    </aside>
+
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <h1>Overview</h1>
+          <div class="subtitle" id="lastUpdated">Loading…</div>
+        </div>
+        <button class="refresh-btn" id="refreshBtn">Refresh</button>
+      </div>
+
+      <div class="stats" id="overview">
+        <div class="stat-card">
+          <div class="value" id="statTotalCalls">—</div>
+          <div class="label">Calls today</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statTotalTalkTime">—</div>
+          <div class="label">Talk time today</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="value" id="statFollowups">—</div>
+          <div class="label">Follow-ups pending today</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statWeekCalls">—</div>
+          <div class="label">Calls this week</div>
+        </div>
+      </div>
+
+      <div class="section" id="followups">
+        <div class="section-title">
+          <h2>Today's Follow-ups</h2>
+          <span class="count" id="followupCount"></span>
+        </div>
+        <div class="followup-list" id="followupList">
+          <div class="loading-state">Loading…</div>
+        </div>
+      </div>
+
+      <div class="section" id="history">
+        <div class="section-title">
+          <h2>Call History</h2>
+          <span class="count" id="historyCount"></span>
+        </div>
+        <div class="toolbar">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search shop, salesman, or notes…"
+          />
+          <select id="salesmanFilter">
+            <option value="">All salesmen</option>
+          </select>
+          <select id="statusFilter">
+            <option value="">All statuses</option>
+            <option value="Answered">Answered</option>
+            <option value="Not Answered">Not answered / missed</option>
+          </select>
+        </div>
+        <div id="dateGroups">
+          <div class="loading-state">Loading call history…</div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const API_URL = "/api/call-logs";
+      let allLogs = [];
+
+      const lastUpdated = document.getElementById("lastUpdated");
+      const refreshBtn = document.getElementById("refreshBtn");
+      const searchInput = document.getElementById("searchInput");
+      const salesmanFilter = document.getElementById("salesmanFilter");
+      const statusFilter = document.getElementById("statusFilter");
+
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str ?? "";
+        return div.innerHTML;
+      }
+
+      function formatDuration(seconds) {
+        const s = Math.max(0, Math.floor(Number(seconds) || 0));
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+      }
+
+      function isAnsweredStatus(status) {
+        const s = (status || "").toLowerCase();
+        return s.includes("answered") && !s.includes("not");
+      }
+
+      function statusBadgeClass(status) {
+        if (!status) return "not-answered";
+        const s = status.toLowerCase();
+        if (isAnsweredStatus(status)) return "answered";
+        if (
+          s.includes("missed") ||
+          s.includes("rejected") ||
+          s.includes("blocked")
+        )
+          return "missed";
+        return "not-answered";
+      }
+
+      function initials(name) {
+        if (!name) return "?";
+        const parts = name.trim().split(/\s+/);
+        return (parts[0][0] + (parts[1] ? parts[1][0] : "")).toUpperCase();
+      }
+
+      function sameCalendarDay(isoString, ref) {
+        if (!isoString) return false;
+        const d = new Date(isoString);
+        return (
+          d.getFullYear() === ref.getFullYear() &&
+          d.getMonth() === ref.getMonth() &&
+          d.getDate() === ref.getDate()
+        );
+      }
+
+      function todayDdMmYyyy() {
+        const now = new Date();
+        return `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+      }
+
+      function dateKey(isoString) {
+        const d = isoString ? new Date(isoString) : new Date(0);
+        return d.toISOString().slice(0, 10);
+      }
+
+      function formatGroupLabel(isoString) {
+        const d = new Date(isoString);
+        const now = new Date();
+        if (sameCalendarDay(isoString, now)) return "Today";
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        if (sameCalendarDay(isoString, yesterday)) return "Yesterday";
+        return d.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+
+      async function fetchLogs() {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = "Refreshing…";
+        try {
+          const res = await fetch(API_URL);
+          const body = await res.json();
+          allLogs = Array.isArray(body.data) ? body.data : [];
+          populateSalesmanFilter();
+          renderOverview();
+          renderFollowups();
+          renderHistory();
+          lastUpdated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+        } catch (err) {
+          document.getElementById("dateGroups").innerHTML =
+            `<div class="empty-note">Could not load call logs. Check the backend is reachable.</div>`;
+          lastUpdated.textContent = "Failed to update";
+        } finally {
+          refreshBtn.disabled = false;
+          refreshBtn.textContent = "Refresh";
+        }
+      }
+
+      function populateSalesmanFilter() {
+        const names = [
+          ...new Set(allLogs.map((l) => l.salesmanName).filter(Boolean)),
+        ].sort();
+        const current = salesmanFilter.value;
+        salesmanFilter.innerHTML =
+          '<option value="">All salesmen</option>' +
+          names
+            .map(
+              (n) =>
+                `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`,
+            )
+            .join("");
+        salesmanFilter.value = current;
+      }
+
+      function renderOverview() {
+        const now = new Date();
+        const todayLogs = allLogs.filter((l) =>
+          sameCalendarDay(l.callTimestamp, now),
+        );
+        const totalSeconds = todayLogs.reduce(
+          (sum, l) => sum + (Number(l.durationSeconds) || 0),
+          0,
+        );
+
+        const weekAgo = new Date(now);
+        weekAgo.setDate(now.getDate() - 7);
+        const weekLogs = allLogs.filter(
+          (l) => l.callTimestamp && new Date(l.callTimestamp) >= weekAgo,
+        );
+
+        const todayStr = todayDdMmYyyy();
+        const followupsToday = allLogs.filter(
+          (l) =>
+            (l.reminderDate && l.reminderDate.trim() === todayStr) ||
+            (sameCalendarDay(l.callTimestamp, now) &&
+              !isAnsweredStatus(l.callStatus)),
+        );
+
+        document.getElementById("statTotalCalls").textContent =
+          todayLogs.length;
+        document.getElementById("statTotalTalkTime").textContent =
+          formatDuration(totalSeconds);
+        document.getElementById("statFollowups").textContent =
+          followupsToday.length;
+        document.getElementById("statWeekCalls").textContent = weekLogs.length;
+      }
+
+      function renderFollowups() {
+        const now = new Date();
+        const todayStr = todayDdMmYyyy();
+
+        const reminders = allLogs.filter(
+          (l) => l.reminderDate && l.reminderDate.trim() === todayStr,
+        );
+        const notAnsweredToday = allLogs.filter(
+          (l) =>
+            sameCalendarDay(l.callTimestamp, now) &&
+            !isAnsweredStatus(l.callStatus) &&
+            !(l.reminderDate && l.reminderDate.trim() === todayStr),
+        );
+        const combined = [...reminders, ...notAnsweredToday];
+
+        document.getElementById("followupCount").textContent = combined.length
+          ? `${combined.length} to follow up`
+          : "";
+
+        const list = document.getElementById("followupList");
+        if (combined.length === 0) {
+          list.innerHTML = `<div class="empty-note">No follow-ups due today. New reminders and unanswered calls will show up here.</div>`;
+          return;
+        }
+
+        list.innerHTML = combined
+          .map((l) => {
+            const isReminder =
+              l.reminderDate && l.reminderDate.trim() === todayStr;
+            const reasonLabel = isReminder
+              ? `Reminder · ${escapeHtml(l.reminderDate)}`
+              : "Not answered — follow up";
+            return `
+        <div class="followup-card">
+          <div class="avatar">${escapeHtml(initials(l.shopName))}</div>
+          <div class="followup-main">
+            <div class="followup-shop">${escapeHtml(l.shopName)}</div>
+            <div class="followup-notes">${escapeHtml(l.notes || "No notes")}</div>
+          </div>
+          <div class="followup-reason ${isReminder ? "reminder" : ""}">${reasonLabel}</div>
+        </div>
+      `;
+          })
+          .join("");
+      }
+
+      function getFilteredLogs() {
+        const query = searchInput.value.trim().toLowerCase();
+        const salesman = salesmanFilter.value;
+        const status = statusFilter.value;
+
+        return allLogs.filter((l) => {
+          const matchesQuery =
+            !query ||
+            (l.shopName || "").toLowerCase().includes(query) ||
+            (l.salesmanName || "").toLowerCase().includes(query) ||
+            (l.notes || "").toLowerCase().includes(query);
+          const matchesSalesman = !salesman || l.salesmanName === salesman;
+          const matchesStatus =
+            !status ||
+            (status === "Answered"
+              ? isAnsweredStatus(l.callStatus)
+              : !isAnsweredStatus(l.callStatus));
+          return matchesQuery && matchesSalesman && matchesStatus;
+        });
+      }
+
+      function renderHistory() {
+        const rows = getFilteredLogs();
+        document.getElementById("historyCount").textContent =
+          `${rows.length} calls`;
+
+        const container = document.getElementById("dateGroups");
+        if (rows.length === 0) {
+          container.innerHTML = `<div class="empty-note">No calls match these filters.</div>`;
+          return;
+        }
+
+        const groups = new Map();
+        rows.forEach((l) => {
+          const key = dateKey(l.callTimestamp);
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(l);
+        });
+        const sortedKeys = [...groups.keys()].sort().reverse();
+
+        container.innerHTML = sortedKeys
+          .map((key, idx) => {
+            const dayLogs = groups
+              .get(key)
+              .sort(
+                (a, b) => new Date(b.callTimestamp) - new Date(a.callTimestamp),
+              );
+            const label = formatGroupLabel(dayLogs[0].callTimestamp);
+            const totalSeconds = dayLogs.reduce(
+              (s, l) => s + (Number(l.durationSeconds) || 0),
+              0,
+            );
+            const isCollapsed = idx > 0;
+
+            const rowsHtml = dayLogs
+              .map((l) => {
+                const dt = l.callTimestamp ? new Date(l.callTimestamp) : null;
+                const timeStr = dt
+                  ? dt.toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "—";
+                return `
+          <div class="call-row">
+            <div class="call-time">${timeStr}</div>
+            <div class="call-shop">
+              <div class="name">${escapeHtml(l.shopName)}</div>
+              <div class="addr">${escapeHtml(l.address || "")}</div>
+            </div>
+            <div class="call-badge ${statusBadgeClass(l.callStatus)}">${escapeHtml(l.callStatus || "Unknown")}</div>
+            <div class="call-duration">${formatDuration(l.durationSeconds)}</div>
+            <div class="call-salesman">${escapeHtml(l.salesmanName || "—")}</div>
+            <div class="call-notes">${escapeHtml(l.notes || "")}</div>
+          </div>
+        `;
+              })
+              .join("");
+
+            return `
+        <div class="date-group ${isCollapsed ? "collapsed" : ""}" data-key="${key}">
+          <div class="date-header" onclick="toggleDateGroup('${key}')">
+            <span class="date-label">${label}</span>
+            <span class="date-meta">
+              <span>${dayLogs.length} calls</span>
+              <span>${formatDuration(totalSeconds)} talk time</span>
+              <span class="chevron">▼</span>
+            </span>
+          </div>
+          <div class="call-list">${rowsHtml}</div>
+        </div>
+      `;
+          })
+          .join("");
+      }
+
+      window.toggleDateGroup = function (key) {
+        const el = document.querySelector(`.date-group[data-key="${key}"]`);
+        if (!el) return;
+        el.classList.toggle("collapsed");
+      };
+
+      document.querySelectorAll(".nav-link").forEach((link) => {
+        link.addEventListener("click", () => {
+          document
+            .querySelectorAll(".nav-link")
+            .forEach((l) => l.classList.remove("active"));
+          link.classList.add("active");
+          const target = document.getElementById(link.dataset.target);
+          if (target)
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+
+      searchInput.addEventListener("input", renderHistory);
+      salesmanFilter.addEventListener("change", renderHistory);
+      statusFilter.addEventListener("change", renderHistory);
+      refreshBtn.addEventListener("click", fetchLogs);
+
+      fetchLogs();
+    </script>
+  </body>
+</html>

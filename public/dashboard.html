@@ -680,23 +680,16 @@
       }
 
       /**
-       * Today's follow-up worklist:
-       *  1. Reminders that are due today OR overdue (e.g. set for Saturday,
-       *     never actioned because Sunday's a holiday — it still shows up
-       *     Monday instead of silently disappearing once the date passes).
-       *  2. Any shop whose MOST RECENT call was never answered — this stays
-       *     on the list regardless of which day that call happened on
-       *     (yesterday, the day before, etc.), since it's still unresolved.
-       *     It naturally drops off once a later call to that shop connects.
+       * Today's follow-up worklist. Both rules look only at each shop's LATEST
+       * call log entry — never older ones — so a follow-up automatically
+       * clears once a newer call resolves it (connects, or a fresh reminder
+       * supersedes the old one). An old reminder from 5 days ago doesn't keep
+       * nagging forever once you've called back since.
+       *
+       *  1. That latest call has a reminder due today or overdue.
+       *  2. OR that latest call was never answered.
        */
       function getTodaysFollowups() {
-        const reminders = allLogs.filter((l) =>
-          isReminderDueOrOverdue(l.reminderDate),
-        );
-        const reminderShopKeys = new Set(
-          reminders.map((l) => l.shopId || l.shopName),
-        );
-
         const latestByShop = new Map();
         allLogs.forEach((l) => {
           const key = l.shopId || l.shopName;
@@ -710,13 +703,11 @@
           }
         });
 
-        const outstandingNotAnswered = [...latestByShop.values()].filter(
+        return [...latestByShop.values()].filter(
           (l) =>
-            !isAnsweredStatus(l.callStatus) &&
-            !reminderShopKeys.has(l.shopId || l.shopName),
+            isReminderDueOrOverdue(l.reminderDate) ||
+            !isAnsweredStatus(l.callStatus),
         );
-
-        return [...reminders, ...outstandingNotAnswered];
       }
 
       function renderFollowups() {
